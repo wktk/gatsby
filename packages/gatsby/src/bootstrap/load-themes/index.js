@@ -1,10 +1,12 @@
 const path = require(`path`)
+const fs = require(`fs-extra`)
 const mergeGatsbyConfig = require(`../../utils/merge-gatsby-config`)
 const Promise = require(`bluebird`)
 const _ = require(`lodash`)
 const debug = require(`debug`)(`gatsby:load-themes`)
 const preferDefault = require(`../prefer-default`)
 const getConfigFile = require(`../get-config-file`)
+const loadPlugins = require(`../load-plugins/load`)
 
 // get the gatsby-config file for a theme
 const resolveTheme = async themeSpec => {
@@ -45,14 +47,37 @@ const processTheme = ({ themeName, themeConfig, themeSpec, themeDir }) => {
   }
 }
 
-module.exports = async config => {
-  const themesA = await Promise.mapSeries(
-    config.__experimentalThemes,
-    async themeSpec => {
-      const themeObj = await resolveTheme(themeSpec)
-      return processTheme(themeObj)
-    }
-  ).then(arr => _.flattenDeep(arr))
+module.exports = async (config = {}, rootDir = null) => {
+  const plugins = loadPlugins(config, rootDir)
+
+  const themesConfig = plugins
+    .filter(
+      theme =>
+        theme.name !== `default-site-plugin` &&
+        fs.existsSync(path.join(theme.resolve, `gatsby-config.js`))
+    )
+    .map(theme => {
+      const pluginIndex = config.plugins.findIndex(
+        plugin =>
+          plugin.resolve === theme.name || plugin.resolve === theme.resolve
+      )
+      const plugin = config.plugins[pluginIndex]
+
+      // delete plugin from the list
+      config.plugins.splice(pluginIndex, 1)
+
+      return plugin
+    })
+    .concat(config.__experimentalThemes || [])
+
+  if (!themesConfig.length) {
+    return Promise.resolve()
+  }
+
+  const themesA = await Promise.mapSeries(themesConfig, async themeSpec => {
+    const themeObj = await resolveTheme(themeSpec)
+    return processTheme(themeObj)
+  }).then(arr => _.flattenDeep(arr))
 
   // log out flattened themes list to aid in debugging
   debug(themesA)

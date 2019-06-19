@@ -77,8 +77,8 @@ module.exports = async (args: BootstrapArgs) => {
   )
 
   // theme gatsby configs can be functions or objects
-  if (config && config.__experimentalThemes) {
-    const themes = await loadThemes(config)
+  const themes = await loadThemes(config, program.directory)
+  if (themes) {
     config = themes.config
 
     store.dispatch({
@@ -102,7 +102,7 @@ module.exports = async (args: BootstrapArgs) => {
 
   activity = report.activityTimer(`load plugins`)
   activity.start()
-  const flattenedPlugins = await loadPlugins(config, program.directory)
+  const flattenedPlugins = await loadPlugins(config, themes, program.directory)
   activity.end()
 
   telemetry.decorateEvent(`BUILD_END`, {
