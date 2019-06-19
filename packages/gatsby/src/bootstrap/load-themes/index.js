@@ -57,6 +57,7 @@ module.exports = async (config = {}, rootDir = null) => {
         fs.existsSync(path.join(theme.resolve, `gatsby-config.js`))
     )
     .map(theme => {
+      // we need the index as we want to remove it from the plugins array to keep old behaviour in check
       const pluginIndex = config.plugins.findIndex(
         plugin =>
           plugin === theme.name ||
@@ -66,6 +67,7 @@ module.exports = async (config = {}, rootDir = null) => {
 
       let plugin = config.plugins[pluginIndex]
 
+      // if plugin is a string we make it compatible with __experimentalThemes config
       if (typeof plugin === `string`) {
         plugin = {
           resolve: plugin,
@@ -73,6 +75,7 @@ module.exports = async (config = {}, rootDir = null) => {
         }
       }
 
+      // remove the theme from plugins
       config.plugins.splice(pluginIndex, 1)
 
       return plugin
