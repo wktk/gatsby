@@ -102,7 +102,7 @@ module.exports = async (args: BootstrapArgs) => {
 
   activity = report.activityTimer(`load plugins`)
   activity.start()
-  const flattenedPlugins = await loadPlugins(config, themes, program.directory)
+  const flattenedPlugins = await loadPlugins(config, program.directory)
   activity.end()
 
   telemetry.decorateEvent(`BUILD_END`, {
