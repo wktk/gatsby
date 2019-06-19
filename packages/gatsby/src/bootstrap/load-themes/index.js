@@ -52,23 +52,17 @@ module.exports = async (config = {}, rootDir = null) => {
 
   const themesConfig = plugins
     .filter(
-      theme =>
-        theme.name !== `default-site-plugin` &&
-        fs.existsSync(path.join(theme.resolve, `gatsby-config.js`))
+      theme => {
+        return theme.name !== `default-site-plugin` &&
+          fs.existsSync(path.join(theme.resolve, `gatsby-config.js`))
+      }
     )
     .map(theme => {
-      const pluginIndex = config.plugins.findIndex(
+      return config.plugins.find(
         plugin =>
-          plugin.resolve === theme.name || plugin.resolve === theme.resolve
+          plugin === theme.name || plugin.resolve === theme.name || plugin.resolve === theme.resolve
       )
-      const plugin = config.plugins[pluginIndex]
-
-      // delete plugin from the list
-      config.plugins.splice(pluginIndex, 1)
-
-      return plugin
-    })
-    .concat(config.__experimentalThemes || [])
+    }).concat(config.__experimentalThemes || [])
 
   if (!themesConfig.length) {
     return Promise.resolve()
