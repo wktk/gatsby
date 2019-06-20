@@ -21,36 +21,10 @@ const resolveTheme = async themeSpec => {
   return { themeName, themeConfig, themeSpec, themeDir }
 }
 
-// single iteration of a recursive function that resolve parent themes
-// It's recursive because we support child themes declaring parents and
-// have to resolve all the way `up the tree` of parent/children relationships
-//
-// Theoretically, there could be an infinite loop here but in practice there is
-// no use case for a loop so I expect that to only happen if someone is very
-// off track and creating their own set of themes
-const processTheme = ({ themeName, themeConfig, themeSpec, themeDir }) => {
-  // gatsby themes don't have to specify a gatsby-config.js (they might only use gatsby-node, etc)
-  // in this case they're technically plugins, but we should support it anyway
-  // because we can't guarentee which files theme creators create first
-  if (themeConfig && themeConfig.__experimentalThemes) {
-    // for every parent theme a theme defines, resolve the parent's
-    // gatsby config and return it in order [parentA, parentB, child]
-    return Promise.mapSeries(themeConfig.__experimentalThemes, async spec => {
-      const themeObj = await resolveTheme(spec)
-      return processTheme(themeObj)
-    }).then(arr =>
-      arr.concat([{ themeName, themeConfig, themeSpec, themeDir }])
-    )
-  } else {
-    // if a theme doesn't define additional themes, return the original theme
-    return [{ themeName, themeConfig, themeSpec, themeDir }]
-  }
-}
-
-module.exports = async (config = {}, rootDir = null) => {
+const getThemes = (config = {}, rootDir = null) => {
   const plugins = loadPlugins(config, rootDir)
 
-  const themesConfig = plugins
+  return plugins
     .filter(
       theme =>
         theme.name !== `default-site-plugin` &&
@@ -81,6 +55,37 @@ module.exports = async (config = {}, rootDir = null) => {
       return plugin
     })
     .concat(config.__experimentalThemes || [])
+}
+
+// single iteration of a recursive function that resolve parent themes
+// It's recursive because we support child themes declaring parents and
+// have to resolve all the way `up the tree` of parent/children relationships
+//
+// Theoretically, there could be an infinite loop here but in practice there is
+// no use case for a loop so I expect that to only happen if someone is very
+// off track and creating their own set of themes
+const processTheme = ({ themeName, themeConfig, themeSpec, themeDir }) => {
+  const nestedThemes = getThemes(themeConfig, themeDir)
+  // gatsby themes don't have to specify a gatsby-config.js (they might only use gatsby-node, etc)
+  // in this case they're technically plugins, but we should support it anyway
+  // because we can't guarentee which files theme creators create first
+  if (nestedThemes.length) {
+    // for every parent theme a theme defines, resolve the parent's
+    // gatsby config and return it in order [parentA, parentB, child]
+    return Promise.mapSeries(nestedThemes, async spec => {
+      const themeObj = await resolveTheme(spec)
+      return processTheme(themeObj)
+    }).then(arr =>
+      arr.concat([{ themeName, themeConfig, themeSpec, themeDir }])
+    )
+  } else {
+    // if a theme doesn't define additional themes, return the original theme
+    return [{ themeName, themeConfig, themeSpec, themeDir }]
+  }
+}
+
+module.exports = async (config = {}, rootDir = null) => {
+  const themesConfig = getThemes(config, rootDir)
 
   if (!themesConfig.length) {
     return Promise.resolve()
