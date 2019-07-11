@@ -4,8 +4,15 @@ export default {
   sidebarUtilityHeight: `3.5rem`,
   pageHeadingDesktopWidth: `3.5rem`,
   sidebarWidth: {
+    // these should be rem's
     default: 11,
     large: 12,
   },
   avatar: `2rem`,
+  mainContentWidth: {
+    default: `54rem`,
+    withSidebar: `42rem`,
+  },
+  // matches sidebarWidth.large
+  tocWidth: `18rem`,
 }
